@@ -42,6 +42,7 @@ interface ScheduleTabProps {
   onMoveMatch?: (matchId: string, direction: 'up' | 'down') => void;
   onOptimizeMatches?: () => void;
   onOpenTeamManager?: () => void;
+  onOpenAdminModal?: () => void;
 }
 
 export const ScheduleTab: React.FC<ScheduleTabProps> = ({
@@ -57,6 +58,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
   onMoveMatch,
   onOptimizeMatches,
   onOpenTeamManager,
+  onOpenAdminModal,
 }) => {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [editingScoreMatch, setEditingScoreMatch] = useState<Match | null>(null);
@@ -263,6 +265,10 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
   };
 
   const handleOpenAddMatchModal = () => {
+    if (!isAdmin) {
+      if (onOpenAdminModal) onOpenAdminModal();
+      return;
+    }
     const t1 = session.teams[0]?.id || '';
     const t2 = session.teams[1]?.id || '';
     setNewMatchHomeTeamId(t1);
@@ -275,6 +281,10 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
   };
 
   const handleSaveAddMatch = () => {
+    if (!isAdmin) {
+      if (onOpenAdminModal) onOpenAdminModal();
+      return;
+    }
     if (!newMatchHomeTeamId || !newMatchAwayTeamId) return;
     if (newMatchHomeTeamId === newMatchAwayTeamId) {
       alert('กรุณาเลือกทีมเหย้าและทีมเยือนที่ไม่ซ้ำกัน');
@@ -626,9 +636,52 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
         
         if (!currentMatch) {
           return (
-            <div className="p-6 bg-white rounded-3xl text-center text-slate-500 text-xs shadow-xs border border-slate-200/80">
-              <p className="font-bold text-slate-700 mb-1">ยังไม่มีตารางการแข่งขัน</p>
-              <p className="text-[11px] text-slate-400">สร้างแมตช์การแข่งขันเพื่อเริ่มนับสกอร์และจับเวลาสด</p>
+            <div className="p-6 bg-white rounded-3xl text-center space-y-3.5 shadow-xs border border-slate-200/80 animate-fadeIn">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#ff2a6d]/15 to-[#ff007f]/5 text-[#ff2a6d] border border-[#ff2a6d]/20 flex items-center justify-center mx-auto shadow-2xs">
+                {isAdmin ? <Sparkles className="w-6 h-6 text-[#ff2a6d]" /> : <Shield className="w-6 h-6 text-amber-600" />}
+              </div>
+              <div className="space-y-1">
+                <p className="font-black text-slate-800 text-sm">ยังไม่มีตารางการแข่งขัน</p>
+                <p className="text-[11px] text-slate-500 max-w-xs mx-auto leading-relaxed">
+                  {isAdmin
+                    ? 'คุณเป็นแอดมิน สามารถกดสร้างตารางการแข่งขันรอบพบกันหมด หรือเพิ่มแมตช์ได้ทันที'
+                    : 'จะสร้างแมตช์การแข่งขันได้ต้องเป็นแอดมินเท่านั้น (เข้าสู่ระบบเพื่อจัดการ)'}
+                </p>
+              </div>
+
+              {isAdmin ? (
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => onGenerateMatches(session.matchDurationMinutes || 7, 2, false, 5)}
+                    className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#ff2a6d] to-[#ff007f] hover:opacity-95 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-500/25 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>⚡ สร้างตารางแข่งวนอัตโนมัติ (Round-Robin)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenAddMatchModal}
+                    className="py-2.5 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ เพิ่มแมตช์เอง</span>
+                  </button>
+                </div>
+              ) : (
+                onOpenAdminModal && (
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={onOpenAdminModal}
+                      className="py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
+                    >
+                      <Shield className="w-3.5 h-3.5 text-amber-400" />
+                      <span>เข้าสู่ระบบแอดมินเพื่อสร้างแมตช์</span>
+                    </button>
+                  </div>
+                )
+              )}
             </div>
           );
         }
@@ -791,29 +844,9 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                 </div>
               </div>
 
-              {/* Goal Action Buttons for Live Match */}
+              {/* Goal Action Buttons & Timer Controls for Live Match (Admin Only) */}
               {isActuallyLive ? (
                 <>
-                  <div className="grid grid-cols-2 gap-2.5 mt-4 pt-3 border-t border-white/10">
-                    <button
-                      onClick={() => setGoalScorerModal({ match: currentMatch, teamId: currentMatch.homeTeamId, isHome: true })}
-                      className="py-2.5 px-3 rounded-2xl bg-white/10 hover:bg-white/15 active:scale-95 border border-white/15 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer backdrop-blur-xs shadow-xs"
-                      id="btn-goal-home"
-                    >
-                      <FootballIcon className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <span className="truncate">{homeTeam?.name || 'ทีมเหย้า'} +1</span>
-                    </button>
-
-                    <button
-                      onClick={() => setGoalScorerModal({ match: currentMatch, teamId: currentMatch.awayTeamId, isHome: false })}
-                      className="py-2.5 px-3 rounded-2xl bg-white/10 hover:bg-white/15 active:scale-95 border border-white/15 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer backdrop-blur-xs shadow-xs"
-                      id="btn-goal-away"
-                    >
-                      <FootballIcon className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <span className="truncate">{awayTeam?.name || 'ทีมเยือน'} +1</span>
-                    </button>
-                  </div>
-
                   {/* Goal Scorer Log if any */}
                   {currentMatch.goals && currentMatch.goals.length > 0 && (
                     <div className="mt-3 p-2.5 rounded-2xl bg-black/20 border border-white/10 text-xs space-y-1">
@@ -838,57 +871,89 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                     </div>
                   )}
 
-                  {/* Timer and Finish Match Controls */}
-                  <div className="mt-3.5 pt-3 border-t border-white/10 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      {!isTimerRunning ? (
+                  {isAdmin ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-2.5 mt-4 pt-3 border-t border-white/10">
                         <button
-                          onClick={handleStartTimer}
-                          className="py-2 px-4 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
-                          id="btn-timer-start"
+                          onClick={() => setGoalScorerModal({ match: currentMatch, teamId: currentMatch.homeTeamId, isHome: true })}
+                          className="py-2.5 px-3 rounded-2xl bg-white/10 hover:bg-white/15 active:scale-95 border border-white/15 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer backdrop-blur-xs shadow-xs"
+                          id="btn-goal-home"
                         >
-                          <Play className="w-3.5 h-3.5 fill-current" />
-                          <span>เริ่มนกหวีด</span>
+                          <FootballIcon className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span className="truncate">{homeTeam?.name || 'ทีมเหย้า'} +1</span>
                         </button>
-                      ) : (
+
                         <button
-                          onClick={handlePauseTimer}
-                          className="py-2 px-4 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
-                          id="btn-timer-pause"
+                          onClick={() => setGoalScorerModal({ match: currentMatch, teamId: currentMatch.awayTeamId, isHome: false })}
+                          className="py-2.5 px-3 rounded-2xl bg-white/10 hover:bg-white/15 active:scale-95 border border-white/15 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer backdrop-blur-xs shadow-xs"
+                          id="btn-goal-away"
                         >
-                          <Pause className="w-3.5 h-3.5 fill-current" />
-                          <span>หยุดเวลา</span>
+                          <FootballIcon className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span className="truncate">{awayTeam?.name || 'ทีมเยือน'} +1</span>
                         </button>
-                      )}
-
-                      <button
-                        onClick={handleResetTimer}
-                        className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-purple-200 border border-white/15 flex items-center justify-center cursor-pointer transition-all active:scale-95"
-                        title="รีเซ็ตเวลา"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    {timerSeconds === 0 && (
-                      <div className="mt-3 py-1.5 px-3 rounded-xl bg-rose-500/25 border border-rose-400/50 text-rose-100 text-xs font-bold flex items-center justify-between animate-pulse">
-                        <span className="flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-rose-300" />
-                          <span>หมดเวลาการแข่งขันแล้ว!</span>
-                        </span>
-                        <span className="text-[11px] text-rose-200">กดปุ่มจบเกมนี้เพื่อบันทึกผล</span>
                       </div>
-                    )}
 
-                    <button
-                      onClick={handleFinishLiveMatch}
-                      className="py-2 px-4 rounded-full bg-[#ff2a6d] hover:bg-[#ff007f] text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-600/30 active:scale-95 transition-all cursor-pointer"
-                      id="btn-finish-match"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-                      <span>จบเกมนี้</span>
-                    </button>
-                  </div>
+                      {/* Timer and Finish Match Controls */}
+                      <div className="mt-3.5 pt-3 border-t border-white/10 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          {!isTimerRunning ? (
+                            <button
+                              onClick={handleStartTimer}
+                              className="py-2 px-4 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
+                              id="btn-timer-start"
+                            >
+                              <Play className="w-3.5 h-3.5 fill-current" />
+                              <span>เริ่มนกหวีด</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={handlePauseTimer}
+                              className="py-2 px-4 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
+                              id="btn-timer-pause"
+                            >
+                              <Pause className="w-3.5 h-3.5 fill-current" />
+                              <span>หยุดเวลา</span>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={handleResetTimer}
+                            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-purple-200 border border-white/15 flex items-center justify-center cursor-pointer transition-all active:scale-95"
+                            title="รีเซ็ตเวลา"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {timerSeconds === 0 && (
+                          <div className="mt-3 py-1.5 px-3 rounded-xl bg-rose-500/25 border border-rose-400/50 text-rose-100 text-xs font-bold flex items-center justify-between animate-pulse">
+                            <span className="flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-rose-300" />
+                              <span>หมดเวลาการแข่งขันแล้ว!</span>
+                            </span>
+                            <span className="text-[11px] text-rose-200">กดปุ่มจบเกมนี้เพื่อบันทึกผล</span>
+                          </div>
+                        )}
+
+                        <button
+                          onClick={handleFinishLiveMatch}
+                          className="py-2 px-4 rounded-full bg-[#ff2a6d] hover:bg-[#ff007f] text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-600/30 active:scale-95 transition-all cursor-pointer"
+                          id="btn-finish-match"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                          <span>จบเกมนี้</span>
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="mt-3.5 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-purple-200">
+                      <span className="flex items-center gap-1.5 font-bold">
+                        <span className="w-2 h-2 rounded-full bg-[#ff2a6d] animate-ping" />
+                        <span>กำลังแข่งขันสด</span>
+                      </span>
+                      <span className="text-[11px] text-purple-300 font-medium">แอดมินเป็นผู้บันทึกผลและจับเวลา</span>
+                    </div>
+                  )}
                 </>
               ) : (
                 /* Next Match Kick Off CTA */
@@ -896,15 +961,21 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
                   <div className="text-[11px] text-purple-200/80">
                     <span>แมตช์ถัดไปพร้อมลงสนาม</span>
                   </div>
-                  <button
-                    onClick={() => {
-                      onUpdateMatch({ ...currentMatch, status: 'live' });
-                    }}
-                    className="py-2 px-4 rounded-full bg-gradient-to-r from-[#ff2a6d] to-[#ff007f] text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-500/30 active:scale-95 transition-all cursor-pointer"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-current" />
-                    <span>เริ่มแข่งขันคู่นี้ (Kick Off)</span>
-                  </button>
+                  {isAdmin ? (
+                    <button
+                      onClick={() => {
+                        onUpdateMatch({ ...currentMatch, status: 'live' });
+                      }}
+                      className="py-2 px-4 rounded-full bg-gradient-to-r from-[#ff2a6d] to-[#ff007f] text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-rose-500/30 active:scale-95 transition-all cursor-pointer"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span>เริ่มแข่งขันคู่นี้ (Kick Off)</span>
+                    </button>
+                  ) : (
+                    <span className="text-[11px] font-bold text-purple-300 bg-purple-900/60 border border-purple-700/50 px-3 py-1 rounded-full">
+                      รอแอดมินเริ่มเกม
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -983,8 +1054,22 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({
 
         {/* Matches Cards */}
         {session.matches.length === 0 ? (
-          <div className="p-6 text-center bg-white border border-slate-200/80 rounded-2xl text-slate-500 text-xs shadow-xs">
-            ยังไม่มีรายการแข่ง กดสร้างตารางแข่งอัตโนมัติ หรือกดเพิ่มแมตช์ใหม่ (แอดมิน)
+          <div className="p-6 text-center bg-white border border-slate-200/80 rounded-2xl text-slate-500 text-xs shadow-xs space-y-2">
+            <p className="font-bold text-slate-700">
+              {isAdmin
+                ? 'ยังไม่มีรายการแข่ง กดสร้างตารางแข่งอัตโนมัติ หรือกดเพิ่มแมตช์ใหม่'
+                : 'ยังไม่มีรายการแข่งขัน (จะสร้างแมตช์การแข่งขันได้ต้องเป็นแอดมินเท่านั้น)'}
+            </p>
+            {!isAdmin && onOpenAdminModal && (
+              <button
+                type="button"
+                onClick={onOpenAdminModal}
+                className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <Shield className="w-3.5 h-3.5 text-amber-400" />
+                <span>เข้าสู่ระบบแอดมิน</span>
+              </button>
+            )}
           </div>
         ) : (
           session.matches

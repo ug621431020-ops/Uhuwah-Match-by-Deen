@@ -21,7 +21,13 @@ interface MonthlyTabProps {
 }
 
 export const MonthlyTab: React.FC<MonthlyTabProps> = ({ sessions, players, onOpenShareModal }) => {
-  const [selectedMonth, setSelectedMonth] = useState<string>('2026-08');
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    if (sessions.length > 0 && sessions[0].date) {
+      return sessions[0].date.slice(0, 7);
+    }
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
 
   const summary = calculateMonthlySummary(sessions, players, selectedMonth);
   const allPlayerStats = calculatePlayerStats(
@@ -31,51 +37,68 @@ export const MonthlyTab: React.FC<MonthlyTabProps> = ({ sessions, players, onOpe
 
   const topScorers = allPlayerStats.filter(p => p.goals > 0).slice(0, 5);
 
-  const monthNames: Record<string, string> = {
-    '2026-08': 'ส.ค. 2026',
-    '2026-07': 'ก.ค. 2026',
-    '2026-06': 'มิ.ย. 2026',
+  // Dynamically generate available months from sessions or current date
+  const availableMonths = React.useMemo(() => {
+    const set = new Set<string>();
+    sessions.forEach(s => {
+      if (s.date && s.date.length >= 7) {
+        set.add(s.date.slice(0, 7));
+      }
+    });
+    const now = new Date();
+    const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    set.add(currentKey);
+    return Array.from(set).sort().reverse();
+  }, [sessions]);
+
+  const formatMonthName = (monthKey: string) => {
+    const [yearStr, monthStr] = monthKey.split('-');
+    const m = parseInt(monthStr, 10);
+    const thaiMonths = [
+      '', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+      'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'
+    ];
+    return `${thaiMonths[m] || monthStr} ${yearStr}`;
   };
 
-  // Compute last 6 months trend data
+  // Compute last 6 months trend data dynamically (returns 0 when no usage)
   const get6MonthTrendData = () => {
-    const monthKeys = [
-      { key: '2026-03', label: 'มี.ค.' },
-      { key: '2026-04', label: 'เม.ย.' },
-      { key: '2026-05', label: 'พ.ค.' },
-      { key: '2026-06', label: 'มิ.ย.' },
-      { key: '2026-07', label: 'ก.ค.' },
-      { key: '2026-08', label: 'ส.ค.' },
+    const now = new Date();
+    const monthKeys: { key: string; label: string }[] = [];
+    const thaiMonths = [
+      'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+      'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'
     ];
 
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = thaiMonths[d.getMonth()];
+      monthKeys.push({ key, label });
+    }
+
     return monthKeys.map(m => {
-      const monthSessions = sessions.filter(s => s.date.startsWith(m.key));
+      const monthSessions = sessions.filter(s => s.date && s.date.startsWith(m.key));
       if (monthSessions.length > 0) {
         let totalAttendance = 0;
         let totalCollected = 0;
         monthSessions.forEach(s => {
-          totalAttendance += s.attendingPlayerIds.length;
+          totalAttendance += s.attendingPlayerIds?.length || 0;
           const paid = s.payments?.reduce((sum, p) => sum + (p.amountPaid || 0), 0) || 0;
           totalCollected += paid;
         });
-        const avgContribution = totalAttendance > 0 ? Math.round(totalCollected / totalAttendance) : 100;
+        const avgContribution = totalAttendance > 0 ? Math.round(totalCollected / totalAttendance) : 0;
         return {
           month: m.label,
           attendance: totalAttendance,
           avgContribution: avgContribution,
         };
       } else {
-        const historicMap: Record<string, { attendance: number; avgContribution: number }> = {
-          '2026-03': { attendance: 20, avgContribution: 100 },
-          '2026-04': { attendance: 22, avgContribution: 100 },
-          '2026-05': { attendance: 21, avgContribution: 105 },
-          '2026-06': { attendance: 24, avgContribution: 100 },
-          '2026-07': { attendance: 24, avgContribution: 100 },
-          '2026-08': { attendance: 24, avgContribution: 100 },
-        };
+        // Zero baseline when no usage
         return {
           month: m.label,
-          ...(historicMap[m.key] || { attendance: 20, avgContribution: 100 }),
+          attendance: 0,
+          avgContribution: 0,
         };
       }
     });
@@ -97,9 +120,11 @@ export const MonthlyTab: React.FC<MonthlyTabProps> = ({ sessions, players, onOpe
           onChange={e => setSelectedMonth(e.target.value)}
           className="bg-slate-50 border border-slate-200 text-slate-800 font-bold text-xs rounded-2xl py-1.5 px-3 focus:outline-none focus:border-[#ff2a6d] cursor-pointer"
         >
-          <option value="2026-08">ส.ค. 2026</option>
-          <option value="2026-07">ก.ค. 2026</option>
-          <option value="2026-06">มิ.ย. 2026</option>
+          {availableMonths.map(m => (
+            <option key={m} value={m}>
+              {formatMonthName(m)}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -180,6 +205,8 @@ export const MonthlyTab: React.FC<MonthlyTabProps> = ({ sessions, players, onOpe
               />
               <YAxis
                 yAxisId="left"
+                domain={[0, (dataMax: number) => Math.max(10, dataMax)]}
+                allowDecimals={false}
                 tick={{ fill: '#94a3b8', fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
@@ -187,7 +214,8 @@ export const MonthlyTab: React.FC<MonthlyTabProps> = ({ sessions, players, onOpe
               <YAxis
                 yAxisId="right"
                 orientation="right"
-                domain={[0, 150]}
+                domain={[0, (dataMax: number) => Math.max(100, dataMax)]}
+                allowDecimals={false}
                 tick={{ fill: '#94a3b8', fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
@@ -231,12 +259,18 @@ export const MonthlyTab: React.FC<MonthlyTabProps> = ({ sessions, players, onOpe
             </ComposedChart>
           </ResponsiveContainer>
         </div>
+
+        {trendData.every(d => d.attendance === 0 && d.avgContribution === 0) && (
+          <div className="text-center py-2 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200 text-[11px] text-slate-500 font-bold">
+            ข้อมูลกราฟเริ่มต้นที่ 0 (ยังไม่มีการบันทึกการแข่งขันหรือรายรับ)
+          </div>
+        )}
       </div>
 
       {/* MONTHLY FINANCIAL BALANCE */}
       <div className="bg-white border border-slate-100/90 rounded-3xl p-4 space-y-3 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         <h3 className="text-xs font-black text-slate-800 flex items-center justify-between">
-          <span>สรุปบัญชี ({monthNames[selectedMonth]})</span>
+          <span>สรุปบัญชี ({formatMonthName(selectedMonth)})</span>
           <span className="text-[10px] text-slate-400 font-medium">{summary.sessionsCount} แมตช์</span>
         </h3>
 

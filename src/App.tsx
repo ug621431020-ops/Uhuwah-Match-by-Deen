@@ -12,6 +12,7 @@ import { EditSessionModal } from './components/EditSessionModal';
 import { NewSessionModal } from './components/NewSessionModal';
 import { PaymentModal } from './components/PaymentModal';
 
+import { Trophy, Plus, Users, Trash2 } from 'lucide-react';
 import { FootballSession, Match, Player, PlayerPayment, Expense, Team, TeamColor } from './types';
 import { AdminTeamManagerModal } from './components/AdminTeamManagerModal';
 import {
@@ -24,6 +25,7 @@ import {
   generateRoundRobinMatches,
   optimizeMatchOrder,
   resetToDefaults,
+  clearAllData,
 } from './services/storage';
 
 export default function App() {
@@ -206,19 +208,25 @@ export default function App() {
 
   // Delete Weekly Session Handler
   const handleDeleteSession = (sessionId: string) => {
-    if (sessions.length <= 1) {
-      alert('ต้องมีรายการแข่งขันอย่างน้อย 1 รายการ');
-      return;
-    }
-
     const remainingSessions = sessions.filter(s => s.id !== sessionId);
     updateSessionsState(remainingSessions);
 
-    // If the deleted session was the active session, switch to the first remaining session
+    // If the deleted session was the active session, switch to the first remaining session or empty string
     if (activeSessionId === sessionId) {
-      const nextActiveId = remainingSessions[0].id;
+      const nextActiveId = remainingSessions[0]?.id || '';
       setActiveSessionIdState(nextActiveId);
       setActiveSessionId(nextActiveId);
+    }
+  };
+
+  // Complete data wipe handler
+  const handleClearAllData = () => {
+    if (confirm('คุณต้องการลบข้อมูลทั้งหมดในระบบใช่หรือไม่? (ผู้เล่น รอบการแข่งขัน และสถิติทั้งหมดจะถูกล้างถาวร)')) {
+      const res = clearAllData();
+      setPlayers(res.players);
+      setSessions(res.sessions);
+      setActiveSessionIdState('');
+      alert('ลบข้อมูลทั้งหมดเรียบร้อยแล้ว');
     }
   };
 
@@ -239,6 +247,10 @@ export default function App() {
 
   // Optimize Match Fixtures Order to Space Out Teams & Avoid Back-to-Back Matches
   const handleOptimizeMatches = () => {
+    if (!isAdmin) {
+      setShowAdminModal(true);
+      return;
+    }
     updateActiveSession(prevSession => {
       const optimized = optimizeMatchOrder(prevSession.matches, prevSession.teams);
       return {
@@ -250,6 +262,10 @@ export default function App() {
 
   // Reorder / Move Match Up or Down
   const handleMoveMatch = (matchId: string, direction: 'up' | 'down') => {
+    if (!isAdmin) {
+      setShowAdminModal(true);
+      return;
+    }
     if (!activeSession) return;
     const matches = [...activeSession.matches].sort((a, b) => a.matchNumber - b.matchNumber);
     const index = matches.findIndex(m => m.id === matchId);
@@ -281,6 +297,10 @@ export default function App() {
     insertBreaks: boolean = false,
     breakDurationMinutes: number = 5
   ) => {
+    if (!isAdmin) {
+      setShowAdminModal(true);
+      return;
+    }
     if (!activeSession) return;
     const generated = generateRoundRobinMatches(
       activeSession.teams,
@@ -298,6 +318,10 @@ export default function App() {
 
   // Add Rest Break Slot (e.g. 5 mins break between rounds)
   const handleAddBreakMatch = (durationMinutes: number = 5, title?: string) => {
+    if (!isAdmin) {
+      setShowAdminModal(true);
+      return;
+    }
     if (!activeSession) return;
     const count = activeSession.matches.length + 1;
     const newBreak: Match = {
@@ -328,6 +352,10 @@ export default function App() {
     homeScore?: number | null,
     awayScore?: number | null
   ) => {
+    if (!isAdmin) {
+      setShowAdminModal(true);
+      return;
+    }
     if (!activeSession) return;
     const count = activeSession.matches.length + 1;
     const newMatch: Match = {
@@ -349,6 +377,10 @@ export default function App() {
 
   // Delete Match with renumbering
   const handleDeleteMatch = (matchId: string) => {
+    if (!isAdmin) {
+      setShowAdminModal(true);
+      return;
+    }
     if (!activeSession) return;
     const filtered = activeSession.matches.filter(m => m.id !== matchId);
     // Renumber remaining matches
@@ -364,6 +396,10 @@ export default function App() {
 
   // Clear All Matches
   const handleClearAllMatches = () => {
+    if (!isAdmin) {
+      setShowAdminModal(true);
+      return;
+    }
     if (!activeSession) return;
     updateActiveSession({
       ...activeSession,
@@ -590,6 +626,10 @@ export default function App() {
     location: string;
     maxPlayersPerTeam: number;
   }) => {
+    if (!isAdmin) {
+      setShowAdminModal(true);
+      return;
+    }
     const newSessionId = `s_${Date.now()}`;
 
     const newSess: FootballSession = {
@@ -655,83 +695,157 @@ export default function App() {
 
         {/* Main Content Area */}
         <main className="flex-1 p-4">
-          {activeSession ? (
-            <>
-              {activeTab === 'schedule' && (
-                <ScheduleTab
-                  session={activeSession}
-                  players={players}
-                  isAdmin={isAdmin}
-                  onUpdateMatch={handleUpdateMatch}
-                  onDeleteMatch={handleDeleteMatch}
-                  onClearAllMatches={handleClearAllMatches}
-                  onGenerateMatches={handleGenerateMatches}
-                  onAddMatch={handleAddMatch}
-                  onAddBreakMatch={handleAddBreakMatch}
-                  onMoveMatch={handleMoveMatch}
-                  onOptimizeMatches={handleOptimizeMatches}
-                  onOpenTeamManager={() => setShowTeamManagerModal(true)}
-                />
-              )}
+          {activeTab === 'players' && (
+            <PlayersTab
+              players={players}
+              activeSession={activeSession}
+              isAdmin={isAdmin}
+              onAddPlayer={handleAddPlayer}
+              onUpdatePlayer={handleUpdatePlayer}
+              onDeletePlayer={handleDeletePlayer}
+              onAssignTeamsToSession={handleAssignTeamsToSession}
+              onToggleAttendance={handleToggleAttendance}
+              onRegisterPlayerTeam={handleRegisterPlayerTeam}
+              onOpenPaymentModal={handleOpenPaymentModal}
+              onOpenTeamManager={() => setShowTeamManagerModal(true)}
+              onAddTeam={handleAddTeam}
+              onUpdateTeam={handleUpdateTeam}
+              onDeleteTeam={handleDeleteTeam}
+            />
+          )}
 
-              {activeTab === 'standings' && (
-                <StandingsTab session={activeSession} players={players} />
-              )}
+          {activeTab === 'monthly' && (
+            <MonthlyTab
+              sessions={sessions}
+              players={players}
+              onOpenShareModal={() => setShowShareModal(true)}
+            />
+          )}
 
-              {activeTab === 'finance' && (
-                <FinanceTab
-                  session={activeSession}
-                  players={players}
-                  isAdmin={isAdmin}
-                  onUpdatePayments={handleUpdatePayments}
-                  onUpdateSessionCosts={handleUpdateSessionCosts}
-                  onAddExpense={handleAddExpense}
-                  onOpenPaymentModal={handleOpenPaymentModal}
-                />
-              )}
+          {(activeTab === 'schedule' || activeTab === 'standings' || activeTab === 'finance') && (
+            activeSession ? (
+              <>
+                {activeTab === 'schedule' && (
+                  <ScheduleTab
+                    session={activeSession}
+                    players={players}
+                    isAdmin={isAdmin}
+                    onUpdateMatch={handleUpdateMatch}
+                    onDeleteMatch={handleDeleteMatch}
+                    onClearAllMatches={handleClearAllMatches}
+                    onGenerateMatches={handleGenerateMatches}
+                    onAddMatch={handleAddMatch}
+                    onAddBreakMatch={handleAddBreakMatch}
+                    onMoveMatch={handleMoveMatch}
+                    onOptimizeMatches={handleOptimizeMatches}
+                    onOpenTeamManager={() => setShowTeamManagerModal(true)}
+                    onOpenAdminModal={() => setShowAdminModal(true)}
+                  />
+                )}
 
-              {activeTab === 'monthly' && (
-                <MonthlyTab
-                  sessions={sessions}
-                  players={players}
-                  onOpenShareModal={() => setShowShareModal(true)}
-                />
-              )}
+                {activeTab === 'standings' && (
+                  <StandingsTab session={activeSession} players={players} />
+                )}
 
-              {activeTab === 'players' && (
-                <PlayersTab
-                  players={players}
-                  activeSession={activeSession}
-                  isAdmin={isAdmin}
-                  onAddPlayer={handleAddPlayer}
-                  onUpdatePlayer={handleUpdatePlayer}
-                  onDeletePlayer={handleDeletePlayer}
-                  onAssignTeamsToSession={handleAssignTeamsToSession}
-                  onToggleAttendance={handleToggleAttendance}
-                  onRegisterPlayerTeam={handleRegisterPlayerTeam}
-                  onOpenPaymentModal={handleOpenPaymentModal}
-                  onOpenTeamManager={() => setShowTeamManagerModal(true)}
-                  onAddTeam={handleAddTeam}
-                  onUpdateTeam={handleUpdateTeam}
-                  onDeleteTeam={handleDeleteTeam}
-                />
-              )}
-            </>
-          ) : (
-            <div className="text-center py-20 space-y-3">
-              <p className="text-slate-400 text-sm">ไม่พบข้อมูลเซสชัน</p>
-              <button
-                onClick={() => {
-                  const res = resetToDefaults();
-                  setPlayers(res.players);
-                  setSessions(res.sessions);
-                  setActiveSessionIdState(res.sessions[0].id);
-                }}
-                className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs"
-              >
-                โหลดข้อมูลตัวอย่างเริ่มต้น
-              </button>
-            </div>
+                {activeTab === 'finance' && (
+                  <FinanceTab
+                    session={activeSession}
+                    players={players}
+                    isAdmin={isAdmin}
+                    onUpdatePayments={handleUpdatePayments}
+                    onUpdateSessionCosts={handleUpdateSessionCosts}
+                    onAddExpense={handleAddExpense}
+                    onOpenPaymentModal={handleOpenPaymentModal}
+                  />
+                )}
+              </>
+            ) : (
+              /* Clean Empty State when no session exists yet */
+              <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-8 text-center space-y-5 animate-fadeIn">
+                <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-[#ff2a6d]/15 to-[#ff007f]/5 text-[#ff2a6d] border border-[#ff2a6d]/20 flex items-center justify-center mx-auto shadow-sm">
+                  <Trophy className="w-8 h-8 fill-[#ff2a6d]" />
+                </div>
+
+                <div className="space-y-1.5 max-w-sm mx-auto">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-[#ff2a6d] bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">
+                    ข้อมูลถูกล้างทั้งหมดแล้ว
+                  </span>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 mt-2">
+                    ยังไม่มีรอบการแข่งขัน
+                  </h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    ระบบพร้อมใช้งานโดยไม่มีข้อมูลตัวอย่าง {isAdmin ? 'คุณสามารถเริ่มสร้างรอบการแข่งขันใหม่ได้ทันที' : 'เข้าสู่ระบบแอดมินเพื่อสร้างรอบการแข่งขัน'} หรือไปที่เมนูผู้เล่นเพื่อเพิ่มรายชื่อของคุณ
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isAdmin) {
+                        setShowAdminModal(true);
+                      } else {
+                        setShowNewSessionModal(true);
+                      }
+                    }}
+                    className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-gradient-to-r from-[#ff2a6d] to-[#ff007f] hover:opacity-95 text-white font-black text-xs flex items-center justify-center gap-2 shadow-md shadow-rose-500/25 active:scale-95 transition-all cursor-pointer"
+                  >
+                    {isAdmin ? (
+                      <>
+                        <Plus className="w-4 h-4" />
+                        <span>+ สร้างรอบการแข่งขันแรก</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-4 h-4" />
+                        <span>เข้าสู่ระบบแอดมินเพื่อสร้างรอบ</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('players')}
+                    className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Users className="w-4 h-4 text-slate-500" />
+                    <span>+ ไปเพิ่มรายชื่อผู้เล่น</span>
+                  </button>
+                </div>
+
+                {/* Helpful Guide Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-4 text-left border-t border-slate-100">
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                    <span className="text-[10px] font-black text-[#ff2a6d] block mb-0.5">ขั้นตอนที่ 1</span>
+                    <span className="text-xs font-bold text-slate-800 block">เพิ่มรายชื่อผู้เล่น</span>
+                    <span className="text-[11px] text-slate-400">สร้างชื่อเล่นและรูปโปรไฟล์</span>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                    <span className="text-[10px] font-black text-[#ff2a6d] block mb-0.5">ขั้นตอนที่ 2</span>
+                    <span className="text-xs font-bold text-slate-800 block">สร้างรอบการแข่งขัน</span>
+                    <span className="text-[11px] text-slate-400">กำหนดวัน เวลา และสนามแข่ง</span>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                    <span className="text-[10px] font-black text-[#ff2a6d] block mb-0.5">ขั้นตอนที่ 3</span>
+                    <span className="text-xs font-bold text-slate-800 block">จัดทีม & แข่งขัน</span>
+                    <span className="text-[11px] text-slate-400">ระบบจับคู่และบันทึกสกอร์ทันที</span>
+                  </div>
+                </div>
+
+                {isAdmin && (
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={handleClearAllData}
+                      className="text-[11px] font-bold text-slate-400 hover:text-rose-600 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>ล้างแคชและข้อมูลระบบทั้งหมดอีกครั้ง</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
           )}
         </main>
 

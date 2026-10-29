@@ -1,9 +1,9 @@
 import { INITIAL_PLAYERS, INITIAL_SESSIONS } from '../data/mockData';
 import { FootballSession, Match, MonthlySummary, Player, PlayerStats, Team, TeamStats } from '../types';
 
-const STORAGE_KEY_PLAYERS = 'thursday_turf_players_v4';
-const STORAGE_KEY_SESSIONS = 'thursday_turf_sessions_v4';
-const STORAGE_KEY_CURRENT_SESSION_ID = 'thursday_turf_current_session_id_v4';
+const STORAGE_KEY_PLAYERS = 'thursday_turf_players_v5';
+const STORAGE_KEY_SESSIONS = 'thursday_turf_sessions_v5';
+const STORAGE_KEY_CURRENT_SESSION_ID = 'thursday_turf_current_session_id_v5';
 
 // Cleanup old mock data keys on startup
 try {
@@ -13,6 +13,9 @@ try {
   localStorage.removeItem('thursday_turf_sessions_v2');
   localStorage.removeItem('thursday_turf_players_v3');
   localStorage.removeItem('thursday_turf_sessions_v3');
+  localStorage.removeItem('thursday_turf_players_v4');
+  localStorage.removeItem('thursday_turf_sessions_v4');
+  localStorage.removeItem('thursday_turf_current_session_id_v4');
 } catch (e) {
   // Ignore
 }
@@ -59,14 +62,23 @@ export function setActiveSessionId(id: string): void {
   localStorage.setItem(STORAGE_KEY_CURRENT_SESSION_ID, id);
 }
 
-export function resetToDefaults(): { players: Player[]; sessions: FootballSession[] } {
-  localStorage.removeItem(STORAGE_KEY_PLAYERS);
-  localStorage.removeItem(STORAGE_KEY_SESSIONS);
-  localStorage.removeItem(STORAGE_KEY_CURRENT_SESSION_ID);
-  saveStoredPlayers(INITIAL_PLAYERS);
-  saveStoredSessions(INITIAL_SESSIONS);
-  return { players: INITIAL_PLAYERS, sessions: INITIAL_SESSIONS };
+export function clearAllData(): { players: Player[]; sessions: FootballSession[] } {
+  try {
+    localStorage.removeItem(STORAGE_KEY_PLAYERS);
+    localStorage.removeItem(STORAGE_KEY_SESSIONS);
+    localStorage.removeItem(STORAGE_KEY_CURRENT_SESSION_ID);
+  } catch (e) {
+    console.error('Failed to clear storage', e);
+  }
+  saveStoredPlayers([]);
+  saveStoredSessions([]);
+  return { players: [], sessions: [] };
 }
+
+export function resetToDefaults(): { players: Player[]; sessions: FootballSession[] } {
+  return clearAllData();
+}
+
 
 
 // Helper calculation functions

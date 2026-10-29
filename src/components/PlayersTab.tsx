@@ -1146,8 +1146,17 @@ export const PlayersTab: React.FC<PlayersTabProps> = ({
               <tbody className="divide-y divide-slate-100 bg-white">
                 {filteredPlayers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-slate-400 font-medium">
-                      ไม่พบข้อมูลสมาชิกที่ค้นหา
+                    <td colSpan={5} className="py-10 text-center text-slate-400 font-medium space-y-1">
+                      <p className="text-xs font-bold text-slate-600">
+                        {players.length === 0
+                          ? 'ยังไม่มีรายชื่อสมาชิกในระบบ'
+                          : 'ไม่พบข้อมูลสมาชิกที่ค้นหา'}
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        {players.length === 0
+                          ? 'แตะปุ่ม "+ เพิ่มสมาชิก" หรือสแกน QR Code ด้านบนเพื่อลงทะเบียนนักเตะคนแรก'
+                          : 'ลองค้นหาด้วยคำอื่น'}
+                      </p>
                     </td>
                   </tr>
                 ) : (

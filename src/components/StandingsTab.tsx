@@ -72,7 +72,14 @@ export const StandingsTab: React.FC<StandingsTabProps> = ({ session, players }) 
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-mono text-[11px] sm:text-xs">
-              {standings.map((st, idx) => {
+              {standings.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="py-8 text-center text-slate-400 font-sans text-xs">
+                    ยังไม่มีข้อมูลทีมหรือการแข่งขันในรอบนี้
+                  </td>
+                </tr>
+              ) : (
+                standings.map((st, idx) => {
                 const isFirst = idx === 0;
                 const isExpanded = expandedTeamId === st.teamId;
                 const teamObj = session.teams.find(t => t.id === st.teamId);
@@ -174,7 +181,8 @@ export const StandingsTab: React.FC<StandingsTabProps> = ({ session, players }) 
                     )}
                   </React.Fragment>
                 );
-              })}
+              })
+            )}
             </tbody>
           </table>
         </div>
