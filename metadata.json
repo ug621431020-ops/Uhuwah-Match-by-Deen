@@ -1,0 +1,6 @@
+{
+  "name": "MATCH UKHUWAH",
+  "description": "ระบบจัดการแข่งขันฟุตบอล MATCH UKHUWAH: เช็กชื่อ แบ่งทีม ตารางแข่ง บันทึกสกอร์ ลีดเดอร์บอร์ด และบัญชีค่าสนาม/ค่าน้ำ",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
