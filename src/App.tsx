@@ -12,7 +12,7 @@ import { EditSessionModal } from './components/EditSessionModal';
 import { NewSessionModal } from './components/NewSessionModal';
 import { PaymentModal } from './components/PaymentModal';
 
-import { Trophy, Plus, Users, Trash2 } from 'lucide-react';
+import { Trophy, Plus, Users, Trash2, Lock } from 'lucide-react';
 import { FootballSession, Match, Player, PlayerPayment, Expense, Team, TeamColor } from './types';
 import { AdminTeamManagerModal } from './components/AdminTeamManagerModal';
 import {

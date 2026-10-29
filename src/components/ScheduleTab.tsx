@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, CheckCircle2, Clock, Plus, Edit2, Volume2, Shield, User, Trophy, Sparkles, Image, Download, SlidersHorizontal, Layers, ChevronDown, ChevronUp, Users, ArrowRight, ArrowUp, ArrowDown, Trash2, PlusCircle, AlertTriangle, Settings2, Check, X, LogOut, Coffee } from 'lucide-react';
+import { Play, Pause, RotateCcw, CheckCircle2, Clock, Plus, Edit2, Volume2, Shield, User, Trophy, Sparkles, Download, SlidersHorizontal, Layers, ChevronDown, ChevronUp, Users, ArrowRight, ArrowUp, ArrowDown, Trash2, PlusCircle, AlertTriangle, Settings2, Check, X, LogOut, Coffee } from 'lucide-react';
 import { FootballSession, Match, Player, Team } from '../types';
 import { soundManager } from '../utils/audio';
 import { PlayerAvatar } from './PlayerAvatar';
